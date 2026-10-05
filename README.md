@@ -16,8 +16,8 @@ OSS 기반 SW 프로그래밍 수업의 Git/GitHub 개발 환경 실습을 위�
 ----
 ## DORA Metrics Automation
 
-[리포트 화면](/image/dora_metric_report.png)
-[실행 성공 로그 스크린샷](/image/dora_metric_sc_log.png)
+![리포트 화면](/image/dora_metric_report.png)
+![실행 성공 로그 스크린샷](/image/dora_metric_sc_log.png)
 ### Overview
 
 `DORA Metrics Automation`은 GitHub Actions와 GitHub REST API를 사용해 최근 7일의 실제 deployment 데이터를 기준으로 DORA 4대 지표를 자동 수집합니다. 데이터가 부족한 지표는 0으로 추정하지 않고 `N/A`(`null`)로 표시합니다.
