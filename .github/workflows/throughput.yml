@@ -1,0 +1,13 @@
+# GitHub Actions로 주간 처리량 계산
+name: Weekly Throughput
+on:
+  schedule:
+    - cron: '0 0 * * 0' # 매주 일요일 자정 실행
+jobs:
+  calculate-throughput:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Closed Issues
+        run: |
+          # GitHub CLI를 사용하여 닫힌 이슈 조회 및 카운트
+          CLOSED_ISSUES=$(gh issue list --state closed --json closedAt --jq 'length')
