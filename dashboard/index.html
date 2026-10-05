@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DORA Metrics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #09111f; color: #e5edf8; }
+    main { width: min(1100px, calc(100% - 32px)); margin: 48px auto; }
+    header { margin-bottom: 28px; }
+    h1 { margin: 0 0 8px; font-size: clamp(2rem, 5vw, 3.4rem); }
+    .muted { color: #91a4bd; }
+    .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .card, .chart-panel { border: 1px solid #22324a; border-radius: 18px; background: #101b2d; box-shadow: 0 16px 40px #0004; }
+    .card { padding: 20px; min-height: 140px; }
+    .card h2 { color: #91a4bd; font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; margin: 0 0 24px; }
+    .value { font-size: clamp(1.6rem, 3vw, 2.5rem); font-weight: 750; }
+    .chart-panel { margin-top: 16px; padding: 24px; height: 430px; }
+    @media (max-width: 850px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 520px) { .cards { grid-template-columns: 1fr; } main { margin-top: 24px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>DORA Metrics</h1>
+      <div id="metadata" class="muted"></div>
+    </header>
+    <section id="cards" class="cards" aria-label="DORA metric summary"></section>
+    <section class="chart-panel"><canvas id="metricsChart"></canvas></section>
+  </main>
+  <script id="dora-data" type="application/json">__DORA_METRICS_JSON__</script>
+  <script>
+    const data = JSON.parse(document.getElementById('dora-data').textContent);
+    const definitions = [
+      ['lead_time', 'Lead Time'],
+      ['deployment_frequency', 'Deployment Frequency'],
+      ['mttr', 'MTTR'],
+      ['change_failure_rate', 'Change Failure Rate']
+    ];
+    const suffix = { hours: ' hours', 'deployments/week': ' / week', percent: '%' };
+    const display = metric => metric.value === null ? 'N/A' : `${metric.value}${suffix[metric.unit]}`;
+    document.getElementById('metadata').textContent =
+      `${data.repository} · Last ${data.period_days} days · Generated ${new Date(data.generated_at).toLocaleString()}`;
+    document.getElementById('cards').innerHTML = definitions.map(([key, label]) =>
+      `<article class="card"><h2>${label}</h2><div class="value">${display(data.metrics[key])}</div></article>`
+    ).join('');
+
+    const values = definitions.map(([key]) => data.metrics[key].value);
+    new Chart(document.getElementById('metricsChart'), {
+      type: 'bar',
+      data: {
+        labels: definitions.map(([, label]) => label),
+        datasets: [{
+          label: 'Metric value (see card for unit)',
+          data: values,
+          backgroundColor: ['#63e6be', '#74c0fc', '#b197fc', '#ff8787'],
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#c9d7e8' } } },
+        scales: {
+          x: { ticks: { color: '#c9d7e8' }, grid: { display: false } },
+          y: { beginAtZero: true, ticks: { color: '#91a4bd' }, grid: { color: '#22324a' } }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

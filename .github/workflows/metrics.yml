@@ -1,39 +1,74 @@
-name: Metrics
+name: DORA Metrics Automation
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
+  pull_request:
+    types: [closed]
+  deployment_status:
   workflow_dispatch:
+    inputs:
+      period_days:
+        description: Metrics collection period in days
+        required: false
+        default: "7"
+      create_weekly_report:
+        description: Create a GitHub issue with the report
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    # Every Monday at 00:00 UTC (09:00 Asia/Seoul).
+    - cron: "0 0 * * 1"
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+  deployments: read
+  issues: write
 
 jobs:
-  github-metrics:
+  collect-dora-metrics:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 15
     steps:
-      - name: Generate GitHub metrics
-        uses: lowlighter/metrics@latest
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          user: ${{ github.repository_owner }}
-          template: classic
-          base: header, activity, community, repositories, metadata
-          config_timezone: Asia/Seoul
-          plugin_languages: yes
-          plugin_languages_limit: 8
-          plugin_languages_sections: most-used, recently-used
-          plugin_languages_colors: github, rainbow, blue-green
-          plugin_isocalendar: yes
-          plugin_isocalendar_duration: half-year
-          plugin_habits: yes
-          plugin_habits_charts: yes
-          plugin_habits_facts: yes
-          plugin_achievements: yes
-          plugin_achievements_display: compact
-          plugin_followup: yes
-          plugin_followup_sections: user, repositories
-          plugin_lines: yes
-          plugin_lines_sections: base, repositories, history
-          plugin_lines_repositories_limit: 5
-          plugin_lines_history_limit: 1
-          plugin_lines_delay: 30
+          python-version: "3.12"
+
+      - name: Collect DORA metrics and build reports
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PERIOD_DAYS: ${{ github.event.inputs.period_days || '7' }}
+        run: python scripts/collect_dora.py
+
+      - name: Upload DORA metrics artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dora-metrics
+          path: |
+            output/dora-metrics.json
+            output/dashboard.html
+            output/weekly-report.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create weekly report issue
+        if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.create_weekly_report)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT_DATE: ${{ github.run_started_at }}
+        shell: bash
+        run: |
+          report_day="${REPORT_DATE%%T*}"
+          gh label create dora-report \
+            --description "Automated weekly DORA metrics reports" \
+            --color "1D76DB" --force
+          gh issue create \
+            --title "[DORA Weekly Report] ${report_day}" \
+            --body-file output/weekly-report.md \
+            --label dora-report
