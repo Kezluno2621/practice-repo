@@ -1,0 +1,9 @@
+name : My Workflow
+on: [push, pull_request]
+
+jobs:
+  bulid:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3  
+      - run: echo "Hello 한글날"
